@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: chemistry-ai-web-app
+    env: python
+    buildCommand: pip install -r requirements_web.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT simple_web_app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+

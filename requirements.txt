@@ -1,0 +1,2 @@
+# Python 3.6 or higher  
+python-telegram-bot==20.0 

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Chemistry AI Solver</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🧠 Chemistry AI Solver</h1>
+            <p class="subtitle">ChatGPT-стиль ИИ для решения химических реакций</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Navigation Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('solve')">🧪 Решить</button>
+                <button class="tab-btn" onclick="showTab('examples')">📚 Примеры</button>
+                <button class="tab-btn" onclick="showTab('history')">📖 История</button>
+                <button class="tab-btn" onclick="showTab('favorites')">⭐ Избранное</button>
+                <button class="tab-btn" onclick="showTab('info')">🤖 О ИИ</button>
+            </div>
+
+            <!-- Solve Tab -->
+            <div id="solve-tab" class="tab-content active">
+                <div class="solve-section">
+                    <div class="input-group">
+                        <label for="reaction-input">Введите химическую реакцию или вопрос:</label>
+                        <input type="text" id="reaction-input" placeholder="Например: Zn + HCl, MnO2 + HCl, или 'Что такое кислота?'"
+                               onkeypress="handleKeyPress(event)">
+                        <button onclick="solveReaction()" class="solve-btn">🚀 Решить с ИИ</button>
+                    </div>
+
+                    <div class="quick-examples">
+                        <p>Быстрые примеры:</p>
+                        <div class="example-buttons">
+                            <button onclick="quickSolve('Zn + HCl')">Zn + HCl</button>
+                            <button onclick="quickSolve('MnO2 + HCl')">MnO2 + HCl</button>
+                            <button onclick="quickSolve('CH4 + O2')">CH4 + O2</button>
+                            <button onclick="quickSolve('NaOH + HCl')">NaOH + HCl</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="result-section" class="result-section" style="display: none;">
+                    <h3>🤖 Результат анализа:</h3>
+                    <div id="result-content" class="result-content"></div>
+                    <div class="result-actions">
+                        <button onclick="addToFavorites()" class="favorite-btn">⭐ В избранное</button>
+                        <button onclick="clearResult()" class="clear-btn">🗑 Очистить</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Examples Tab -->
+            <div id="examples-tab" class="tab-content">
+                <div class="examples-section">
+                    <h3>📚 Примеры реакций по типам</h3>
+
+                    <div class="example-category">
+                        <h4>🔸 Металл + кислота</h4>
+                        <div class="example-buttons" id="metal-acid-examples"></div>
+                    </div>
+
+                    <div class="example-category">
+                        <h4>🔸 Металл + кислород</h4>
+                        <div class="example-buttons" id="metal-oxygen-examples"></div>
+                    </div>
+
+                    <div class="example-category">
+                        <h4>🔸 Кислота + основание</h4>
+                        <div class="example-buttons" id="acid-base-examples"></div>
+                    </div>
+
+                    <div class="example-category">
+                        <h4>🔸 Горение</h4>
+                        <div class="example-buttons" id="combustion-examples"></div>
+                    </div>
+
+                    <div class="example-category">
+                        <h4>🔸 ОВР реакции</h4>
+                        <div class="example-buttons" id="redox-examples"></div>
+                    </div>
+
+                    <div class="example-category">
+                        <h4>🔸 Разложение</h4>
+                        <div class="example-buttons" id="decomposition-examples"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history-tab" class="tab-content">
+                <div class="history-section">
+                    <h3>📖 История запросов</h3>
+                    <div id="history-list" class="history-list">
+                        <p class="empty-message">История пуста. Попробуйте решить несколько реакций!</p>
+                    </div>
+                    <button onclick="clearHistory()" class="clear-btn">🗑 Очистить историю</button>
+                </div>
+            </div>
+
+            <!-- Favorites Tab -->
+            <div id="favorites-tab" class="tab-content">
+                <div class="favorites-section">
+                    <h3>⭐ Избранные реакции</h3>
+                    <div id="favorites-list" class="favorites-list">
+                        <p class="empty-message">Избранное пусто. Добавьте реакции из результатов!</p>
+                    </div>
+                    <button onclick="clearFavorites()" class="clear-btn">🗑 Очистить избранное</button>
+                </div>
+            </div>
+
+            <!-- Info Tab -->
+            <div id="info-tab" class="tab-content">
+                <div class="info-section">
+                    <h3>🤖 О ChatGPT-стиль нейронной сети</h3>
+
+                    <div class="info-card">
+                        <h4>🧠 Возможности ИИ</h4>
+                        <ul>
+                            <li>✅ Понимает естественный язык запросов</li>
+                            <li>✅ Предсказывает 100+ химических реакций</li>
+                            <li>✅ Распознает 12 типов реакций</li>
+                            <li>✅ Оценивает уверенность предсказания</li>
+                            <li>✅ Дает образовательные объяснения</li>
+                            <li>✅ Работает без интернета</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card">
+                        <h4>📊 Технические характеристики</h4>
+                        <ul>
+                            <li>🎯 Точность: 40-100% в зависимости от сложности</li>
+                            <li>⚡ Скорость: Мгновенные ответы</li>
+                            <li>🗄 База: 100+ обученных реакций</li>
+                            <li>🎓 Образовательный подход</li>
+                            <li>📱 Адаптивный интерфейс</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card">
+                        <h4>📋 Поддерживаемые типы реакций</h4>
+                        <div class="reaction-types">
+                            <span class="reaction-type">Металл + кислота</span>
+                            <span class="reaction-type">Металл + кислород</span>
+                            <span class="reaction-type">Кислота + основание</span>
+                            <span class="reaction-type">Горение</span>
+                            <span class="reaction-type">ОВР</span>
+                            <span class="reaction-type">Разложение</span>
+                            <span class="reaction-type">Вытеснение</span>
+                            <span class="reaction-type">Обмен</span>
+                            <span class="reaction-type">Амфотерные</span>
+                            <span class="reaction-type">Органические</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>🤖 ИИ анализирует...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
