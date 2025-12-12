@@ -31,3 +31,4 @@ python deploy_now.py
 3. Настройте Web App в @BotFather
 
 
+
