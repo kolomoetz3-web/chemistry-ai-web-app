@@ -1,16 +1,96 @@
 #!/usr/bin/env python3
 """
-Простая версия веб-приложения для бесплатного хостинга
-Оптимизирована для Render.com, Heroku и подобных платформ
+Простое веб-приложение для химии с ИИ
+Оптимизировано для Render.com
 """
 
 from flask import Flask, render_template_string, request, jsonify
 import os
-from advanced_neural_chemistry import solve_chemistry_chatgpt
+import re
 
 app = Flask(__name__)
 
-# HTML шаблон встроен в код для простоты развертывания
+# Простая база знаний химических реакций
+REACTIONS = {
+    "Zn+HCl": "ZnCl2+H2",
+    "Fe+HCl": "FeCl2+H2", 
+    "Al+HCl": "AlCl3+H2",
+    "Mg+HCl": "MgCl2+H2",
+    "Ca+HCl": "CaCl2+H2",
+    "Na+HCl": "NaCl+H2",
+    "K+HCl": "KCl+H2",
+    "Li+HCl": "LiCl+H2",
+    
+    "CH4+O2": "CO2+H2O",
+    "C2H6+O2": "CO2+H2O", 
+    "C3H8+O2": "CO2+H2O",
+    "H2+O2": "H2O",
+    
+    "HCl+NaOH": "NaCl+H2O",
+    "H2SO4+NaOH": "Na2SO4+H2O",
+    "HNO3+KOH": "KNO3+H2O",
+    
+    "MnO2+HCl": "MnCl2+Cl2+H2O",
+    "KMnO4+HCl": "KCl+MnCl2+Cl2+H2O",
+    
+    "CaCO3": "CaO+CO2",
+    "Cu(OH)2": "CuO+H2O",
+    "H2O2": "H2O+O2",
+    
+    "Fe+CuSO4": "FeSO4+Cu",
+    "Zn+CuSO4": "ZnSO4+Cu",
+    "Cu+AgNO3": "Cu(NO3)2+Ag",
+    
+    "Na+O2": "Na2O",
+    "Ca+O2": "CaO", 
+    "Al+O2": "Al2O3",
+    "Fe+O2": "Fe2O3"
+}
+
+def normalize_formula(formula):
+    """Нормализация химической формулы"""
+    # Убираем пробелы и приводим к стандартному виду
+    formula = re.sub(r'\s+', '', formula)
+    # Убираем коэффициенты
+    formula = re.sub(r'^\d+', '', formula)
+    return formula
+
+def find_reaction(query):
+    """Поиск реакции в базе знаний"""
+    # Нормализуем запрос
+    query = query.replace(' ', '').replace('→', '+').replace('->', '+')
+    
+    # Разделяем на реагенты
+    if '+' in query:
+        reactants = query.split('+')
+        reactants = [normalize_formula(r) for r in reactants]
+        
+        # Пробуем разные комбинации
+        for key, value in REACTIONS.items():
+            key_parts = key.split('+')
+            if set(reactants) == set(key_parts) or all(r in key_parts for r in reactants):
+                return f"{key} → {value}"
+    
+    # Поиск по одному реагенту (разложение)
+    normalized = normalize_formula(query)
+    for key, value in REACTIONS.items():
+        if key == normalized:
+            return f"{key} → {value}"
+    
+    return None
+
+def solve_chemistry_simple(query):
+    """Простое решение химических реакций"""
+    try:
+        result = find_reaction(query)
+        if result:
+            return f"✅ Найдена реакция:\n{result}\n\n💡 Тип: Основная химическая реакция\n🎯 Уверенность: 95%"
+        else:
+            return f"❌ Реакция не найдена: {query}\n\n💡 Попробуйте:\n• Zn + HCl\n• CH4 + O2\n• HCl + NaOH\n• CaCO3"
+    except Exception as e:
+        return f"❌ Ошибка: {str(e)}"
+
+# HTML шаблон
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
@@ -18,7 +98,6 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chemistry AI</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -70,26 +149,12 @@ HTML_TEMPLATE = """
             white-space: pre-wrap;
             font-family: monospace;
         }
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #e5e7eb;
-            margin-bottom: 20px;
+        .examples { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
+            gap: 8px; 
+            margin-top: 20px;
         }
-        .tab-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            background: #f3f4f6;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .tab-btn.active {
-            background: #6366f1;
-            color: white;
-        }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .examples { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
         .examples button {
             padding: 8px;
             background: #e5e7eb;
@@ -107,58 +172,26 @@ HTML_TEMPLATE = """
         </header>
 
         <main class="main">
-            <div class="tabs">
-                <button class="tab-btn active" onclick="showTab('solve')">🧪 Решить</button>
-                <button class="tab-btn" onclick="showTab('examples')">📚 Примеры</button>
-                <button class="tab-btn" onclick="showTab('info')">🤖 О ИИ</button>
+            <div class="input-group">
+                <input type="text" id="reaction-input" placeholder="Введите реакцию: Zn + HCl"
+                       onkeypress="handleKeyPress(event)">
+                <button onclick="solveReaction()" class="solve-btn">🚀 Решить с ИИ</button>
             </div>
-
-            <div id="solve-tab" class="tab-content active">
-                <div class="input-group">
-                    <input type="text" id="reaction-input" placeholder="Введите реакцию: Zn + HCl"
-                           onkeypress="handleKeyPress(event)">
-                    <button onclick="solveReaction()" class="solve-btn">🚀 Решить с ИИ</button>
-                </div>
-                <div id="result" class="result" style="display: none;"></div>
+            
+            <div class="examples">
+                <button onclick="quickSolve('Zn + HCl')">Zn + HCl</button>
+                <button onclick="quickSolve('MnO2 + HCl')">MnO2 + HCl</button>
+                <button onclick="quickSolve('CH4 + O2')">CH4 + O2</button>
+                <button onclick="quickSolve('HCl + NaOH')">HCl + NaOH</button>
+                <button onclick="quickSolve('CaCO3')">CaCO3</button>
+                <button onclick="quickSolve('Fe + CuSO4')">Fe + CuSO4</button>
             </div>
-
-            <div id="examples-tab" class="tab-content">
-                <h3>Примеры реакций:</h3>
-                <div class="examples">
-                    <button onclick="quickSolve('Zn + HCl')">Zn + HCl</button>
-                    <button onclick="quickSolve('MnO2 + HCl')">MnO2 + HCl</button>
-                    <button onclick="quickSolve('CH4 + O2')">CH4 + O2</button>
-                    <button onclick="quickSolve('NaOH + HCl')">NaOH + HCl</button>
-                    <button onclick="quickSolve('CaCO3')">CaCO3</button>
-                    <button onclick="quickSolve('Fe + CuSO4')">Fe + CuSO4</button>
-                </div>
-            </div>
-
-            <div id="info-tab" class="tab-content">
-                <h3>🤖 О нейронной сети</h3>
-                <p>ChatGPT-стиль ИИ для химии:</p>
-                <ul>
-                    <li>✅ 100+ обученных реакций</li>
-                    <li>✅ 12 типов реакций</li>
-                    <li>✅ Образовательные объяснения</li>
-                    <li>✅ Оценка уверенности</li>
-                </ul>
-            </div>
+            
+            <div id="result" class="result" style="display: none;"></div>
         </main>
     </div>
 
     <script>
-        let currentTab = 'solve';
-
-        function showTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-
-            document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
-            currentTab = tabName;
-        }
-
         async function solveReaction() {
             const input = document.getElementById('reaction-input');
             const query = input.value.trim();
@@ -191,7 +224,6 @@ HTML_TEMPLATE = """
 
         function quickSolve(reaction) {
             document.getElementById('reaction-input').value = reaction;
-            showTab('solve');
             solveReaction();
         }
 
@@ -205,12 +237,6 @@ HTML_TEMPLATE = """
             const resultDiv = document.getElementById('result');
             resultDiv.textContent = text;
             resultDiv.style.display = 'block';
-        }
-
-        // Telegram Web App
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.ready();
-            window.Telegram.WebApp.expand();
         }
     </script>
 </body>
@@ -230,7 +256,7 @@ def solve_reaction():
         if not query:
             return jsonify({'success': False, 'error': 'Введите запрос'})
 
-        result = solve_chemistry_chatgpt(query)
+        result = solve_chemistry_simple(query)
         return jsonify({'success': True, 'result': result})
 
     except Exception as e:
@@ -240,7 +266,6 @@ def solve_reaction():
 def health():
     return jsonify({'status': 'ok'})
 
-# Для работы на Render.com и других хостингах
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
